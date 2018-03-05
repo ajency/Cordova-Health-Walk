@@ -74,7 +74,7 @@ import java.util.concurrent.TimeUnit;
  */
 public class HealthPlugin extends CordovaPlugin {
     // logger tag
-    private static final String TAG = "cordova-plugin-health";
+    private static final String TAG = "cordova-health-walk";
 
     // calling activity
     private CordovaInterface cordova;
