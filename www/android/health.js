@@ -197,6 +197,25 @@ Health.prototype.toFitActivity = function (act) {
   else return act;
 };
 
+Health.prototype.recordMetric = function(action, session, onSuccess, onError){
+  exec(onSuccess, onError, "health", "recordMetric", [action, session]);
+};
+
+Health.prototype.getSession = function(sessionid, sessionname, onSuccess, onError){
+  exec(onSuccess, onError, "health", "getSession", [sessionid, sessionname]);
+};
+
+Health.prototype.startSession = function(name, id, onSuccess, onError){
+  exec(onSuccess, onError, "health", "startSession", [name, id]);
+};
+Health.prototype.stopSession = function(id, onSuccess, onError){
+  exec(onSuccess, onError, "health", "stopSession", [id]);
+};
+
+Health.prototype.setUpSensor = function(action, onSuccess, onError){
+  exec(onSuccess, onError, "health", "setUpSensor", [action]);
+}
+
 cordova.addConstructor(function () {
   navigator.health = new Health();
   return navigator.health;
