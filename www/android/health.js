@@ -216,6 +216,10 @@ Health.prototype.setUpSensor = function(action, onSuccess, onError){
   exec(onSuccess, onError, "health", "setUpSensor", [action]);
 }
 
+Health.prototype.checkClientConnection = function(onSuccess, onError){
+  exec(onSuccess, onError, "health", "checkClientConnection",[]);
+}
+
 cordova.addConstructor(function () {
   navigator.health = new Health();
   return navigator.health;

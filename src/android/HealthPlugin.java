@@ -68,13 +68,15 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
+import jdk.nashorn.internal.codegen.CompilerConstants;
+
 /**
  * Health plugin Android code.
  * MIT licensed.
  */
 public class HealthPlugin extends CordovaPlugin {
     // logger tag
-    private static final String TAG = "cordova-health-walk";
+    private static final String TAG = "cordova-plugin-health";
 
     // calling activity
     private CordovaInterface cordova;
@@ -498,11 +500,24 @@ public class HealthPlugin extends CordovaPlugin {
             });
             return true;
         }
+        else if("checkClientConnection".equals(action)){
+            cordova.getThreadPool().execute(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        checkClientConnection(callbackContext);
+                    } catch (Exception ex) {
+                        callbackContext.error(ex.getMessage());
+                    }
+                }
+            });
+            return true;
+        }
 
         return false;
     }
 
-    private static String recordingStatus = "";
+    // private static String recordingStatus = "";
 
     private void recordMetric(final JSONArray args ,final CallbackContext callbackContext){
         Object recordObj = null;
@@ -524,10 +539,10 @@ public class HealthPlugin extends CordovaPlugin {
 //         Log.d(TAG, " recordaction value " + recordaction + " session_name value: " + session_name);
 
         if("start".equals(recordaction)){
-            if(session_name.equals("skip_session") && recordingStatus.equals("recording")){
-                callbackContext.success("recording already in progress");
-                return;
-            }
+            // if(session_name.equals("skip_session") && recordingStatus.equals("recording")){
+            //     callbackContext.success("recording already in progress");
+            //     return;
+            // }
 
             Fitness.RecordingApi
             .subscribe(mClient, DataType.AGGREGATE_STEP_COUNT_DELTA)
@@ -536,7 +551,7 @@ public class HealthPlugin extends CordovaPlugin {
                         public void onResult(Status status) {
                             if (status.isSuccess()) {
                                 Log.d(TAG, "start record success " + status.getStatusMessage() );
-                                recordingStatus = "recording";
+                                // recordingStatus = "recording";
                                 // callbackContext.success();
                                 if(session_name.equals("skip_session")){
                                     callbackContext.success("recording steps without session");
@@ -554,10 +569,10 @@ public class HealthPlugin extends CordovaPlugin {
         }
         else if("stop".equals(recordaction)){
 
-            if(session_name.equals("skip_session") && recordingStatus.equals("stopped")){
-                callbackContext.success("recording already stopped");
-                return;
-            }
+            // if(session_name.equals("skip_session") && recordingStatus.equals("stopped")){
+            //     callbackContext.success("recording already stopped");
+            //     return;
+            // }
 
             Fitness.RecordingApi
             .unsubscribe(mClient, DataType.AGGREGATE_STEP_COUNT_DELTA)
@@ -566,7 +581,7 @@ public class HealthPlugin extends CordovaPlugin {
                         public void onResult(Status status) {
                             if (status.isSuccess()) {
                                 Log.d(TAG, "stop record success " + status.getStatusMessage() );
-                                recordingStatus = "stopped";
+                                // recordingStatus = "stopped";
                                 if(session_name.equals("skip_session")){
                                     callbackContext.success("stopped recording steps without session");
                                 }
@@ -648,7 +663,6 @@ public class HealthPlugin extends CordovaPlugin {
                                 sessiondetails.put("name",session.getName());
                                 sessiondetails.put("identifier",session.getIdentifier());
                                 sessiondetails.put("ongoing",session.isOngoing());
-                                sessiondetails.put("aggsteps",0);
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }
@@ -1165,6 +1179,15 @@ public class HealthPlugin extends CordovaPlugin {
         mClient.connect();
     }
 
+    private void checkClientConnection(final CallbackContext callbackContext){
+        if(mClient != null && mClient.isConnected()){
+            callbackContext.success("connected");
+        }
+        else{
+            callbackContext.error("not connected");
+        }
+    }
+    
     // helper function, connects to fitness APIs assuming that authorisation was granted
     private boolean lightConnect() {
         this.cordova.setActivityResultCallback(this);
