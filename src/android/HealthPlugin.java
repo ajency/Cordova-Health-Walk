@@ -518,8 +518,24 @@ public class HealthPlugin extends CordovaPlugin {
     }
 
     // private static String recordingStatus = "";
+    private boolean checkClientAuthStatus(){
+        if (mClient != null && mClient.isConnected()) {
+            return true;
+        }
+        else{
+            return lightConnect();
+        }
+
+    } // end checkClient AuthStatus
+
 
     private void recordMetric(final JSONArray args ,final CallbackContext callbackContext){
+
+        if (!checkClientAuthStatus()) {
+            callbackContext.error("Cannot connect to Google Fit");
+            return;
+        }
+        
         Object recordObj = null;
         Object sessnameObj = null;
         try {
@@ -533,8 +549,9 @@ public class HealthPlugin extends CordovaPlugin {
             return;
         }
 
-        final String recordaction = String.valueOf(recordObj); 
+        final String recordaction = String.valueOf(recordObj);
         final String session_name =  String.valueOf(sessnameObj);
+        
 
 //         Log.d(TAG, " recordaction value " + recordaction + " session_name value: " + session_name);
 
@@ -545,8 +562,8 @@ public class HealthPlugin extends CordovaPlugin {
             // }
 
             Fitness.RecordingApi
-            .subscribe(mClient, DataType.AGGREGATE_STEP_COUNT_DELTA)
-            .setResultCallback(new ResultCallback<Status>() {
+                    .subscribe(mClient, DataType.AGGREGATE_STEP_COUNT_DELTA)
+                    .setResultCallback(new ResultCallback<Status>() {
                         @Override
                         public void onResult(Status status) {
                             if (status.isSuccess()) {
@@ -575,8 +592,8 @@ public class HealthPlugin extends CordovaPlugin {
             // }
 
             Fitness.RecordingApi
-            .unsubscribe(mClient, DataType.AGGREGATE_STEP_COUNT_DELTA)
-            .setResultCallback(new ResultCallback<Status>() {
+                    .unsubscribe(mClient, DataType.AGGREGATE_STEP_COUNT_DELTA)
+                    .setResultCallback(new ResultCallback<Status>() {
                         @Override
                         public void onResult(Status status) {
                             if (status.isSuccess()) {
@@ -595,7 +612,7 @@ public class HealthPlugin extends CordovaPlugin {
                             }
                         }
                     });
-        }        
+        }
     } // end recordMetric
 
     private Session session = null;
@@ -627,28 +644,36 @@ public class HealthPlugin extends CordovaPlugin {
 
         long starttime = System.currentTimeMillis() - 1000;
         final Session session = sessionbuilder
-                    .setStartTime(starttime, TimeUnit.MILLISECONDS)
-                    .setActivity(FitnessActivities.WALKING)
-                    .build();
+                .setStartTime(starttime, TimeUnit.MILLISECONDS)
+                .setActivity(FitnessActivities.WALKING)
+                .build();
         Log.d(TAG, "session built");
         return session;
     } // end _buildSession
 
     private void startSession(final String sessionname, final String sessionidentifier, final CallbackContext callbackContext){
+        
+        if (!checkClientAuthStatus()) {
+            callbackContext.error("Cannot connect to Google Fit");
+            return;
+        }
+        
         Log.d(TAG, "init startSession method");
 
-            if(sessionidentifier == null){ // assume staring a new session
-                if(session != null && session.isOngoing()){
-                    Log.d(TAG, "cannot start session..." );
-                    callbackContext.error("session still running");
-                    return;
-                }
+        if(sessionidentifier == null){ // assume staring a new session
+            if(session != null && session.isOngoing()){
+                Log.d(TAG, "cannot start session..." );
+                callbackContext.error("session still running");
+                return;
             }
+        }
 
-            session = _buildSession(sessionname, sessionidentifier);
+        session = _buildSession(sessionname, sessionidentifier);
 
-            Log.d(TAG, "starting the session: " + sessionname);
-            Fitness.SessionsApi.startSession(mClient,session)
+  
+
+        Log.d(TAG, "starting the session: " + sessionname);
+        Fitness.SessionsApi.startSession(mClient,session)
                 .setResultCallback(new ResultCallback<Status>() {
                     @Override
                     public void onResult(Status status) {
@@ -678,6 +703,12 @@ public class HealthPlugin extends CordovaPlugin {
     } // end startSession
 
     private void stopSession(final String sessionidentifier, final CallbackContext callbackContext){
+        
+        if (!checkClientAuthStatus()) {
+            callbackContext.error("Cannot connect to Google Fit");
+            return;
+        }
+        
         Log.d(TAG, "init stop Session method");
         final String sessionid;
         if(sessionidentifier.isEmpty()){ // check for currently running session if no seeion id is passed in
@@ -693,7 +724,7 @@ public class HealthPlugin extends CordovaPlugin {
         else{
             sessionid = sessionidentifier;
         }
-
+        
         Log.d(TAG, "stopping the session: " + sessionid);
         Fitness.SessionsApi.stopSession(mClient, sessionid)
                 .setResultCallback(new ResultCallback<SessionStopResult>() {
@@ -737,12 +768,18 @@ public class HealthPlugin extends CordovaPlugin {
     }
 
     private void getSession(final JSONArray args ,final CallbackContext callbackContext){
+
+        if (!checkClientAuthStatus()) {
+            callbackContext.error("Cannot connect to Google Fit");
+            return;
+        }
+        
         Object sessionObj = null;
         Object sesnameobj = null;
         try {
             sessionObj = args.get(0);
             sesnameobj = args.get(1);
-        } 
+        }
         catch (JSONException e) {
             //some exception handler code.
             Log.d(TAG, " JSON parse error");
@@ -750,11 +787,11 @@ public class HealthPlugin extends CordovaPlugin {
             return;
         }
 
-        final String sessionid = String.valueOf(sessionObj); 
+        final String sessionid = String.valueOf(sessionObj);
         final String sessionname = String.valueOf(sesnameobj);
 
 
-         // Set a start and end time for our query, using a start time of 1 week before this moment.
+        // Set a start and end time for our query, using a start time of 1 week before this moment.
         final Calendar cal = Calendar.getInstance();
         Date now = new Date();
         cal.setTime(now);
@@ -764,7 +801,7 @@ public class HealthPlugin extends CordovaPlugin {
 
         // Build a session read request
         SessionReadRequest.Builder readrequestbuilder = new SessionReadRequest.Builder();
-        
+
         readrequestbuilder
                 .setTimeInterval(startTime, endTime, TimeUnit.MILLISECONDS)
                 .read(DataType.AGGREGATE_STEP_COUNT_DELTA);
@@ -774,113 +811,118 @@ public class HealthPlugin extends CordovaPlugin {
                     .setSessionName(sessionname);
             Log.d(TAG, "retriveing session name " + sessionname);
         }
-        
+
         if("all".equals(sessionid) == false && sessionid.isEmpty() == false){
             readrequestbuilder
                     .setSessionId(sessionid);
 
             Log.d(TAG, "retriveing session id " + sessionid);
         }
-
         
         SessionReadRequest readRequest = readrequestbuilder.build();
         // Invoke the Sessions API to fetch the session with the query and wait for the result
         // of the read request. Note: Fitness.SessionsApi.readSession() requires the
         // ACCESS_FINE_LOCATION permission.
         Fitness.SessionsApi
-                    .readSession(mClient,readRequest)
-                    .setResultCallback(new ResultCallback<SessionReadResult>() {
-                        @Override
-                        public void onResult(@NonNull SessionReadResult sessionReadResult) {
-                            Status readstatus = sessionReadResult.getStatus();
-                            if(readstatus.isSuccess()){
-                                List<Session> sessions = sessionReadResult.getSessions();
+                .readSession(mClient,readRequest)
+                .setResultCallback(new ResultCallback<SessionReadResult>() {
+                    @Override
+                    public void onResult(@NonNull SessionReadResult sessionReadResult) {
+                        Status readstatus = sessionReadResult.getStatus();
+                        if(readstatus.isSuccess()){
+                            List<Session> sessions = sessionReadResult.getSessions();
 
-                                Log.i(TAG, "Session read was successful. Number of returned sessions is: " + sessions.size());
+                            Log.i(TAG, "Session read was successful. Number of returned sessions is: " + sessions.size());
 
 //                                final Session session = sessions.get(0);
 
 //                                final List<DataSet> dataset = sessionReadResult.getDataSet(session, DataType.TYPE_STEP_COUNT_DELTA);
-                                JSONArray result = new JSONArray();
+                            JSONArray result = new JSONArray();
 
-                                for(Session session: sessions){
-                                    JSONObject obj = new JSONObject();
+                            for(Session session: sessions){
+                                JSONObject obj = new JSONObject();
 
-                                    long stepsum = 0;
-                                        for (DataSet dataset : sessionReadResult.getDataSet(session, DataType.AGGREGATE_STEP_COUNT_DELTA)){
-                                            if(dataset.isEmpty() == false){
+                                long stepsum = 0;
+                                for (DataSet dataset : sessionReadResult.getDataSet(session, DataType.AGGREGATE_STEP_COUNT_DELTA)){
+                                    if(dataset.isEmpty() == false){
 
 
-                                                Log.d(TAG, "sessionid: " + session.getIdentifier() + "  dataset datatype " + dataset.getDataType() );
+                                        Log.d(TAG, "sessionid: " + session.getIdentifier() + "  dataset datatype " + dataset.getDataType() );
 
-                                                for(DataPoint datapoint: dataset.getDataPoints()){
-                                                    Log.d(TAG, "  point: " + datapoint.getValue(Field.FIELD_STEPS).asInt());
-                                                    stepsum += datapoint.getValue(Field.FIELD_STEPS).asInt();
-                                                }
-                                                Log.d(TAG, "   aggregate steps: " + stepsum);
-                                            }
+                                        for(DataPoint datapoint: dataset.getDataPoints()){
+                                            Log.d(TAG, "  point: " + datapoint.getValue(Field.FIELD_STEPS).asInt());
+                                            stepsum += datapoint.getValue(Field.FIELD_STEPS).asInt();
                                         }
-
-                                    try {
-                                        obj.put("startTime", session.getStartTime(TimeUnit.MILLISECONDS) );
-                                        obj.put("endTime", session.getEndTime(TimeUnit.MILLISECONDS) );
-                                        obj.put("name",session.getName());
-                                        obj.put("identifier",session.getIdentifier());
-                                        obj.put("aggsteps",stepsum);
-                                        obj.put("ongoing",session.isOngoing());
-                                    } catch (JSONException e) {
-                                        e.printStackTrace();
+                                        Log.d(TAG, "   aggregate steps: " + stepsum);
                                     }
-
-                                    result.put(obj);
                                 }
 
-                                callbackContext.success(result);
+                                try {
+                                    obj.put("startTime", session.getStartTime(TimeUnit.MILLISECONDS) );
+                                    obj.put("endTime", session.getEndTime(TimeUnit.MILLISECONDS) );
+                                    obj.put("name",session.getName());
+                                    obj.put("identifier",session.getIdentifier());
+                                    obj.put("aggsteps",stepsum);
+                                    obj.put("ongoing",session.isOngoing());
+                                } catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
+
+                                result.put(obj);
                             }
-                            else{
-                                callbackContext.error("session read error");
-                            }
+
+                            callbackContext.success(result);
                         }
-                    });
+                        else{
+                            callbackContext.error("session read error");
+                        }
+                    }
+                });
 
     } // end getSession
 
     final OnDataPointListener stepcountlistener = new OnDataPointListener() {
-                @Override
-                public void onDataPoint(DataPoint dataPoint) {
-                    DataType datatype = dataPoint.getDataType();
+        @Override
+        public void onDataPoint(DataPoint dataPoint) {
+            DataType datatype = dataPoint.getDataType();
 //                    DataSource datasource = dataPoint.getDataSource();
 
-                    for (Field field : dataPoint.getDataType().getFields()) {
-                        Value val = dataPoint.getValue(field);
+            for (Field field : dataPoint.getDataType().getFields()) {
+                Value val = dataPoint.getValue(field);
 //                        Log.d(TAG, "Detected DataPoint field: " + field.getName());
-                        Log.d(TAG, "Detected DataPoint value: " + val);
+                Log.d(TAG, "Detected DataPoint value: " + val);
 
 //                        Log.d(TAG, "new datatype " + datatype + " endat " +  dataPoint.getEndTime(TimeUnit.MILLISECONDS));
-                        
-                        JSONObject obj = new JSONObject();
 
-                        try {
-                            obj.put("endtime", dataPoint.getEndTime(TimeUnit.MILLISECONDS));
-                            obj.put("step_delta", val.asInt());
-                        } catch (JSONException e) {
-                            e.printStackTrace();
-                        }
+                JSONObject obj = new JSONObject();
 
-                        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, obj);
-                        pluginResult.setKeepCallback(true);
-                        outputEvent.sendPluginResult(pluginResult);
+                try {
+                    obj.put("endtime", dataPoint.getEndTime(TimeUnit.MILLISECONDS));
+                    obj.put("step_delta", val.asInt());
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
 
-                    }
+                PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, obj);
+                pluginResult.setKeepCallback(true);
+                outputEvent.sendPluginResult(pluginResult);
+
+            }
 
 
 //                    outputEvent.success("hi there");
-                }
-            };
+        }
+    };
 
     private CallbackContext outputEvent =  null;
 
     private void setUpSensor(final JSONArray args, final CallbackContext callbackContext){
+
+        if (!checkClientAuthStatus()) {
+            callbackContext.error("Cannot connect to Google Fit");
+            return;
+        }
+        
         String action = "";
         try{
             action = String.valueOf(args.get(0));
@@ -889,50 +931,50 @@ public class HealthPlugin extends CordovaPlugin {
             callbackContext.error("invalid arguments");
             return;
         }
-
+        
         final SensorRequest sensorrequest = new SensorRequest.Builder()
-                                                            .setDataType(DataType.AGGREGATE_STEP_COUNT_DELTA)
+                .setDataType(DataType.AGGREGATE_STEP_COUNT_DELTA)
 //                                                            .setAccuracyMode(SensorRequest.ACCURACY_MODE_HIGH)
-                                                            .setSamplingRate(1, TimeUnit.SECONDS)
-                                                            .build();
+                .setSamplingRate(1, TimeUnit.SECONDS)
+                .build();
 
         if(action.equals("register")){
             Fitness.SensorsApi.add(mClient,sensorrequest,stepcountlistener)
-                                .setResultCallback(new ResultCallback<Status>() {
-                                    @Override
-                                    public void onResult(@NonNull Status status) {
-                                        Log.d(TAG, "sensor register action status message " + status.getStatusMessage());
-                                        if(status.isSuccess()){
-                                            outputEvent = callbackContext;
+                    .setResultCallback(new ResultCallback<Status>() {
+                        @Override
+                        public void onResult(@NonNull Status status) {
+                            Log.d(TAG, "sensor register action status message " + status.getStatusMessage());
+                            if(status.isSuccess()){
+                                outputEvent = callbackContext;
 //                                            callbackContext.success("new sensor registered");
-                                             PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, "sensor registered");
-                                             pluginResult.setKeepCallback(true);
-                                            outputEvent.sendPluginResult(pluginResult);
-                                        }
-                                        else{
-                                            callbackContext.error(status.getStatusMessage());
-                                        }
-                                    }
-                                });
+                                PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, "sensor registered");
+                                pluginResult.setKeepCallback(true);
+                                outputEvent.sendPluginResult(pluginResult);
+                            }
+                            else{
+                                callbackContext.error(status.getStatusMessage());
+                            }
+                        }
+                    });
         }
         else if(action.equals("unregister")){
             Fitness.SensorsApi.remove(mClient,stepcountlistener)
-                            .setResultCallback(new ResultCallback<Status>() {
-                                @Override
-                                public void onResult(@NonNull Status status) {
-                                    Log.d(TAG, "sendor unregister action status message " + status.getStatusMessage());
-                                    if(status.isSuccess()){
-                                        PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, "sensor unregistered");
-                                        pluginResult.setKeepCallback(false);
-                                        outputEvent.sendPluginResult(pluginResult);
+                    .setResultCallback(new ResultCallback<Status>() {
+                        @Override
+                        public void onResult(@NonNull Status status) {
+                            Log.d(TAG, "sendor unregister action status message " + status.getStatusMessage());
+                            if(status.isSuccess()){
+                                PluginResult pluginResult = new PluginResult(PluginResult.Status.OK, "sensor unregistered");
+                                pluginResult.setKeepCallback(false);
+                                outputEvent.sendPluginResult(pluginResult);
 //                                        callbackContext.success("new sensor unregistered");
-                                        outputEvent = null;
-                                    }
-                                    else{
-                                     callbackContext.error(status.getStatusMessage());
-                                    }
-                                }
-                            });
+                                outputEvent = null;
+                            }
+                            else{
+                                callbackContext.error(status.getStatusMessage());
+                            }
+                        }
+                    });
         }
         else{
             callbackContext.error("unhandled action " + action);
@@ -1187,15 +1229,16 @@ public class HealthPlugin extends CordovaPlugin {
             callbackContext.error("not connected");
         }
     }
-    
+
     // helper function, connects to fitness APIs assuming that authorisation was granted
     private boolean lightConnect() {
         this.cordova.setActivityResultCallback(this);
 
         GoogleApiClient.Builder builder = new GoogleApiClient.Builder(this.cordova.getActivity().getApplicationContext());
+        builder.addApi(Fitness.RECORDING_API);
+        builder.addApi(Fitness.SESSIONS_API);
         builder.addApi(Fitness.HISTORY_API);
         builder.addApi(Fitness.CONFIG_API);
-        builder.addApi(Fitness.SESSIONS_API);
 
         mClient = builder.build();
         mClient.blockingConnect();
@@ -1429,12 +1472,12 @@ public class HealthPlugin extends CordovaPlugin {
                             Value nutrients = datapoint.getValue(Field.FIELD_NUTRIENTS);
                             NutrientFieldInfo fieldInfo = nutrientFields.get(datatype);
                             if (fieldInfo != null) {
-								if (nutrients.getKeyValue(fieldInfo.field) != null) {
-									obj.put("value", (float) nutrients.getKeyValue(fieldInfo.field));
-								} else {
-									obj.put("value", 0f);
-								}
-								obj.put("unit", fieldInfo.unit);
+                                if (nutrients.getKeyValue(fieldInfo.field) != null) {
+                                    obj.put("value", (float) nutrients.getKeyValue(fieldInfo.field));
+                                } else {
+                                    obj.put("value", 0f);
+                                }
+                                obj.put("unit", fieldInfo.unit);
                             }
                         }
                     } else if (DT.equals(DataType.TYPE_CALORIES_EXPENDED)) {
@@ -1478,13 +1521,13 @@ public class HealthPlugin extends CordovaPlugin {
                         if (dataReadActivityResult.getStatus().isSuccess()) {
                             JSONArray distanceDataPoints = new JSONArray();
                             JSONArray calorieDataPoints = new JSONArray();
-                            
+
                             List<DataSet> dataActivitySets = dataReadActivityResult.getDataSets();
                             for (DataSet dataActivitySet : dataActivitySets) {
                                 for (DataPoint dataActivityPoint : dataActivitySet.getDataPoints()) {
 
                                     JSONObject activityObj = new JSONObject();
-                                    
+
                                     activityObj.put("startDate", dataActivityPoint.getStartTime(TimeUnit.MILLISECONDS));
                                     activityObj.put("endDate", dataActivityPoint.getEndTime(TimeUnit.MILLISECONDS));
                                     DataSource dataActivitySource = dataActivityPoint.getOriginalDataSource();
@@ -1512,7 +1555,7 @@ public class HealthPlugin extends CordovaPlugin {
                             }
                             obj.put("distance", distanceDataPoints);
                             obj.put("calories", calorieDataPoints);
-                        }                                  
+                        }
                     } else if (DT.equals(customdatatypes.get("gender"))) {
                         for (Field f : customdatatypes.get("gender").getFields()) {
                             //there should be only one field named gender
@@ -1853,7 +1896,7 @@ public class HealthPlugin extends CordovaPlugin {
                     retBucket.put("unit", "activitySummary");
                     // query per bucket time to get distance and calories per activity
                     JSONObject actobj = getAggregatedActivityDistanceCalories (st, et);
-                    retBucket.put("value", actobj);                                
+                    retBucket.put("value", actobj);
                 } else if (datatype.equalsIgnoreCase("nutrition.water")) {
                     retBucket.put("unit", "ml");
                 } else if (datatype.equalsIgnoreCase("nutrition")) {
@@ -1897,7 +1940,7 @@ public class HealthPlugin extends CordovaPlugin {
                             retBucket.put("unit", "activitySummary");
                             // query per bucket time to get distance and calories per activity
                             JSONObject actobj = getAggregatedActivityDistanceCalories (bucket.getStartTime(TimeUnit.MILLISECONDS), bucket.getEndTime(TimeUnit.MILLISECONDS));
-                            retBucket.put("value", actobj);   
+                            retBucket.put("value", actobj);
                         } else if (datatype.equalsIgnoreCase("nutrition.water")) {
                             retBucket.put("unit", "ml");
                         } else if (datatype.equalsIgnoreCase("nutrition")) {
@@ -1994,13 +2037,13 @@ public class HealthPlugin extends CordovaPlugin {
 
     private JSONObject getAggregatedActivityDistanceCalories (long st, long et)  throws JSONException {
         JSONObject actobj = new JSONObject();
-        
+
         DataReadRequest readActivityDistCalRequest = new DataReadRequest.Builder()
-                        .aggregate(DataType.TYPE_DISTANCE_DELTA, DataType.AGGREGATE_DISTANCE_DELTA)
-                        .aggregate(DataType.TYPE_CALORIES_EXPENDED, DataType.AGGREGATE_CALORIES_EXPENDED)
-                        .bucketByActivityType(1, TimeUnit.SECONDS)
-                        .setTimeRange(st, et, TimeUnit.MILLISECONDS)
-                        .build();
+                .aggregate(DataType.TYPE_DISTANCE_DELTA, DataType.AGGREGATE_DISTANCE_DELTA)
+                .aggregate(DataType.TYPE_CALORIES_EXPENDED, DataType.AGGREGATE_CALORIES_EXPENDED)
+                .bucketByActivityType(1, TimeUnit.SECONDS)
+                .setTimeRange(st, et, TimeUnit.MILLISECONDS)
+                .build();
 
         DataReadResult dataActivityDistCalReadResult = Fitness.HistoryApi.readData(mClient, readActivityDistCalRequest).await();
 
@@ -2015,12 +2058,12 @@ public class HealthPlugin extends CordovaPlugin {
                 for (DataPoint datapoint : distanceDataSet.getDataPoints()) {
                     distance += datapoint.getValue(Field.FIELD_DISTANCE).asFloat();
                 }
-                
+
                 DataSet caloriesDataSet = activityBucket.getDataSet(DataType.AGGREGATE_CALORIES_EXPENDED);
                 for (DataPoint datapoint : caloriesDataSet.getDataPoints()) {
                     calories += datapoint.getValue(Field.FIELD_CALORIES).asFloat();
                 }
-                
+
                 JSONObject summary;
                 if (actobj.has(activity)) {
                     summary = actobj.getJSONObject(activity);
@@ -2037,7 +2080,7 @@ public class HealthPlugin extends CordovaPlugin {
 
                 actobj.put(activity, summary);
             }
-        }        
+        }
         return actobj;
     }
 
