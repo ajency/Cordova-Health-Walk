@@ -68,7 +68,7 @@ import java.util.Map;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 
-import jdk.nashorn.internal.codegen.CompilerConstants;
+//import jdk.nashorn.internal.codegen.CompilerConstants;
 
 /**
  * Health plugin Android code.
@@ -76,7 +76,7 @@ import jdk.nashorn.internal.codegen.CompilerConstants;
  */
 public class HealthPlugin extends CordovaPlugin {
     // logger tag
-    private static final String TAG = "cordova-plugin-health";
+    private static final String TAG = "cordova-health-walk";
 
     // calling activity
     private CordovaInterface cordova;
@@ -599,7 +599,7 @@ public class HealthPlugin extends CordovaPlugin {
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            
+
             if(session_name.equals("skip_session")){
                 callbackContext.success(result);
             }
@@ -609,7 +609,7 @@ public class HealthPlugin extends CordovaPlugin {
 
         }
         else if("stop".equals(recordaction)){
-            
+
 //            Fitness.RecordingApi
 //                    .unsubscribe(mClient, DataType.AGGREGATE_STEP_COUNT_DELTA)
 //                    .setResultCallback(new ResultCallback<Status>() {
@@ -654,7 +654,7 @@ public class HealthPlugin extends CordovaPlugin {
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-            
+
             // recordingStatus = "stopped";
             if(session_name.equals("skip_session")){
                 callbackContext.success(result);
@@ -738,11 +738,11 @@ public class HealthPlugin extends CordovaPlugin {
                                 sessiondetails.put("name",session.getName());
                                 sessiondetails.put("identifier",session.getIdentifier());
                                 sessiondetails.put("ongoing",session.isOngoing());
-                                
+
                                 if(recordingResult != null){
                                     sessiondetails.put("recordingResult",recordingResult);
                                 }
-  
+
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }
@@ -805,7 +805,7 @@ public class HealthPlugin extends CordovaPlugin {
                                     sessiondetails.put("name",session.getName());
                                     sessiondetails.put("identifier",session.getIdentifier());
                                     sessiondetails.put("ongoing",session.isOngoing());
-                                    
+
                                     if(recordingResult != null){
                                         sessiondetails.put("recordingResult", recordingResult);
                                     }
@@ -901,20 +901,9 @@ public class HealthPlugin extends CordovaPlugin {
                             for(Session session: sessions){
                                 JSONObject obj = new JSONObject();
 
-                                long stepsum = 0;
-                                for (DataSet dataset : sessionReadResult.getDataSet(session, DataType.AGGREGATE_STEP_COUNT_DELTA)){
-                                    if(dataset.isEmpty() == false){
-
-
-                                        Log.d(TAG, "sessionid: " + session.getIdentifier() + "  dataset datatype " + dataset.getDataType() );
-
-                                        for(DataPoint datapoint: dataset.getDataPoints()){
-                                            Log.d(TAG, "  point: " + datapoint.getValue(Field.FIELD_STEPS).asInt());
-                                            stepsum += datapoint.getValue(Field.FIELD_STEPS).asInt();
-                                        }
-                                        Log.d(TAG, "   aggregate steps: " + stepsum);
-                                    }
-                                }
+                                long stepsum = getStepsFromSession(sessionReadResult, session);
+                                long distance = getDistanceFromSession(sessionReadResult, session);
+                                long calories = getCaloriesFromSession(sessionReadResult, session);
 
                                 try {
                                     obj.put("startTime", session.getStartTime(TimeUnit.MILLISECONDS) );
@@ -922,6 +911,8 @@ public class HealthPlugin extends CordovaPlugin {
                                     obj.put("name",session.getName());
                                     obj.put("identifier",session.getIdentifier());
                                     obj.put("aggsteps",stepsum);
+                                    obj.put("distance",distance);
+                                    obj.put("calories",calories);
                                     obj.put("ongoing",session.isOngoing());
                                 } catch (JSONException e) {
                                     e.printStackTrace();
@@ -939,6 +930,63 @@ public class HealthPlugin extends CordovaPlugin {
                 });
 
     } // end getSession
+
+    private long getStepsFromSession(final SessionReadResult sessionReadResult, final Session session){
+        long stepsum = 0;
+        for (DataSet dataset : sessionReadResult.getDataSet(session, DataType.AGGREGATE_STEP_COUNT_DELTA)){
+            if(dataset.isEmpty() == false){
+
+
+                Log.d(TAG, "sessionid: " + session.getIdentifier() + "  dataset datatype " + dataset.getDataType() );
+
+                for(DataPoint datapoint: dataset.getDataPoints()){
+                    Log.d(TAG, "  point: " + datapoint.getValue(Field.FIELD_STEPS).asInt());
+                    stepsum += datapoint.getValue(Field.FIELD_STEPS).asInt();
+                }
+                Log.d(TAG, "   aggregate steps: " + stepsum);
+            }
+        }
+
+        return stepsum;
+    }
+
+    private long getDistanceFromSession(final SessionReadResult sessionReadResult, final Session session){
+        long distance = 0;
+        for (DataSet dataset : sessionReadResult.getDataSet(session, DataType.AGGREGATE_DISTANCE_DELTA)){
+            if(dataset.isEmpty() == false){
+
+
+                Log.d(TAG, "get Distance From Session datatype " + dataset.getDataType() );
+
+                for(DataPoint datapoint: dataset.getDataPoints()){
+                    Log.d(TAG, "  distance: " + datapoint.getValue(Field.FIELD_DISTANCE).asInt());
+                    distance += datapoint.getValue(Field.FIELD_DISTANCE).asInt();
+                }
+                Log.d(TAG, "   aggregate distance: " + distance);
+            }
+        }
+
+        return distance;
+    }
+
+    private long getCaloriesFromSession(final SessionReadResult sessionReadResult, final Session session){
+        long calories = 0;
+        for (DataSet dataset : sessionReadResult.getDataSet(session, DataType.AGGREGATE_CALORIES_EXPENDED)){
+            if(dataset.isEmpty() == false){
+
+
+                Log.d(TAG, " get Calories From Session datatype " + dataset.getDataType() );
+
+                for(DataPoint datapoint: dataset.getDataPoints()){
+                    Log.d(TAG, "  calories: " + datapoint.getValue(Field.FIELD_DISTANCE).asInt());
+                    calories += datapoint.getValue(Field.FIELD_DISTANCE).asInt();
+                }
+                Log.d(TAG, "   aggregate distance: " + calories);
+            }
+        }
+
+        return calories;
+    }
 
     final OnDataPointListener stepcountlistener = new OnDataPointListener() {
         @Override

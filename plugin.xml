@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
   id="cordova-health-walk"
-  version="1.0.3">
+  version="1.0.4">
 
   <name>Cordova Health Walk</name>
 
