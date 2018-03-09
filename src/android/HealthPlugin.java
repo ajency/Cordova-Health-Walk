@@ -1222,7 +1222,7 @@ public class HealthPlugin extends CordovaPlugin {
     }
 
     private void checkClientConnection(final CallbackContext callbackContext){
-        if(mClient != null && mClient.isConnected()){
+        if(checkClientAuthStatus()){
             callbackContext.success("connected");
         }
         else{
