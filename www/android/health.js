@@ -220,6 +220,10 @@ Health.prototype.checkClientConnection = function(onSuccess, onError){
   exec(onSuccess, onError, "health", "checkClientConnection",[]);
 }
 
+Health.prototype.getAuthToken = function(onSuccess, onError){
+  exec(onSuccess, onError, "health", "getToken",[]);
+}
+
 cordova.addConstructor(function () {
   navigator.health = new Health();
   return navigator.health;

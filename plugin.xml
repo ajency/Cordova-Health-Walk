@@ -79,11 +79,15 @@
   <!-- android -->
   <platform name="android">
     <framework src="com.google.android.gms:play-services-fitness:11.8.0" />
+    <framework src="com.google.android.gms:play-services-auth:11.8.0" />
+    <framework src="com.google.android.gms:play-services-plus:11.8.0" />
 
     <config-file target="AndroidManifest.xml" parent="/*">
       <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
       <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
       <uses-permission android:name="android.permission.BODY_SENSORS" />
+      <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+      <uses-permission android:name="android.permission.USE_CREDENTIALS" />
     </config-file>
 
     <config-file target="res/xml/config.xml" parent="/*">
