@@ -4,6 +4,7 @@ import android.Manifest;
 import android.accounts.Account;
 import android.accounts.AccountManager;
 import android.app.Activity;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
@@ -15,11 +16,15 @@ import android.util.Log;
 
 import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
+import com.google.android.gms.auth.GooglePlayServicesAvailabilityException;
+import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.common.Scopes;
+import com.google.android.gms.common.api.GoogleApi;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
@@ -556,32 +561,47 @@ public class HealthPlugin extends CordovaPlugin {
 //        return accountName;
 //    }
 
+    private static final String CLIENT_ID = "951327779378-580s91s0f1vah2be0k8v08qpare3bsas.apps.googleusercontent.com";
+
     private void getToken(CallbackContext callbackContext){
         if (!checkClientAuthStatus()) {
             callbackContext.error("Cannot connect to Google Fit");
             return;
         }
 
-        GoogleSignInAccount acct = GoogleSignIn.getLastSignedInAccount(this.cordova.getActivity());
-//        GoogleSignInAccount acct = GoogleSignIn.;
+//        GoogleSignInAccount acct = GoogleSignIn.getLastSignedInAccount(this.cordova.getActivity());
 
-        String accountName = Plus.AccountApi.getAccountName(mClient);
+//        String accountName = Plus.AccountApi.getAccountName(mClient);
         Person account = Plus.PeopleApi.getCurrentPerson(mClient);
-//        String accountName = "cyrus@ajency.in";
+        String accountName = "cyrus@ajency.in";
 //        String scopes = "oauth2:" + Scopes.FITNESS_BODY_READ; // https://www.googleapis.com/auth/plus.login
-        String scopes = "oauth2:https://www.googleapis.com/auth/plus.login";
+//        String scopes = "oauth2:https://www.googleapis.com/auth/plus.login";
+
+        String scopes = "oauth2:server:client_id:" + CLIENT_ID + ":api_scope:https://www.googleapis.com/auth/plus.login";
 
         Log.d(TAG,"account name: " + accountName + " PeopleApi account:" + account);
-        Log.d(TAG,"account email: " + scopes);
+        Log.d(TAG,"account scopes: " + scopes);
 
         try {
-            String token = GoogleAuthUtil.getToken(this.cordova.getActivity(),accountName,Scopes.FITNESS_BODY_READ);
+            String token = GoogleAuthUtil.getToken(this.cordova.getActivity(),accountName,scopes);
             callbackContext.success(token);
-        } catch (IOException e) {
+        }
+        catch (GooglePlayServicesAvailabilityException playEx) {
+            Dialog alert = GooglePlayServicesUtil.getErrorDialog(
+                    playEx.getConnectionStatusCode(),
+                    this.cordova.getActivity(),
+                    0);
+        }
+        catch (UserRecoverableAuthException userAuthEx) {
+//            startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
+            Log.e(TAG,"UserRecoverableAuthException",userAuthEx);
+        }
+        catch (IOException e) {
             e.printStackTrace();
             Log.e(TAG,"IOExpection: ", e);
             callbackContext.error(e.getMessage());
-        } catch (GoogleAuthException e) {
+        }
+        catch (GoogleAuthException e) {
             e.printStackTrace();
             Log.e(TAG,"GoogleAuthException: ", e);
             callbackContext.error((e.getMessage()));
